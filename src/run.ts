@@ -5,6 +5,8 @@ import { mapProducts } from "./mappers/mapProducts"
 import { mapShippingZones } from "./mappers/mapShippingZones"
 import { mapPromotions } from "./mappers/mapPromotions"
 import { mapOrders } from "./mappers/mapOrders"
+import { applyMaxDiscountCap, computeLoyaltyDiscount, computeLoyaltyPointsByCustomer, computeVolumeDiscount } from "./calculations/discounts"
+import { HANDLING_FEE, SHIPPING_LIMIT, TAX } from "./constants/business"
 
 function indexByKey<T, K extends keyof T>(items: T[], key: K): Record<string, T> {
 	const index: Record<string, T> = {}
@@ -18,16 +20,6 @@ function indexByKey<T, K extends keyof T>(items: T[], key: K): Record<string, T>
 	}
 
 	return index
-}
-
-function groupOrdersByCustomerId(orders: { customerId: string }[]): Record<string, typeof orders> {
-	const grouped: Record<string, typeof orders> = {}
-	for (const o of orders) {
-		const cid = o.customerId
-		if (!grouped[cid]) grouped[cid] = []
-		grouped[cid].push(o)
-	}
-	return grouped
 }
 
 export function run(): string {
@@ -56,7 +48,7 @@ export function run(): string {
 	const shippingZonesByZone = indexByKey(shippingZones, "zone")
 	const promotionsByCode = indexByKey(promotions, "code")
 
-	const ordersByCustomerId = groupOrdersByCustomerId(orders)
+	const loyaltyPointsByCustomerId = computeLoyaltyPointsByCustomer(orders)
 
 	type CustomerTotals = {
 		subtotal: number
@@ -114,5 +106,131 @@ export function run(): string {
 		totalsByCustomer[cid].morningBonus += morningBonus
 	}
 
-	return ""
+	const outputLines: string[] = []
+	let grandTotal = 0.0
+	let totalTaxCollected = 0.0
+
+	// Legacy: tri par ID client
+	const sortedCustomerIds = Object.keys(totalsByCustomer).sort()
+
+	for (const cid of sortedCustomerIds) {
+		const cust = customersById[cid]
+		const name = cust?.name ?? "Unknown"
+		const level = cust?.level ?? "BASIC"
+		const zone = cust?.zone ?? "ZONE1"
+		const currency = cust?.currency ?? "EUR"
+
+		const sub = totalsByCustomer[cid].subtotal
+		const weight = totalsByCustomer[cid].weight
+		const items = totalsByCustomer[cid].items
+		const itemCount = items.length
+
+		// --- Discounts (legacy) ---
+		const firstOrderDate = items[0]?.date ?? ""
+		let volumeDiscount = computeVolumeDiscount(sub, level, firstOrderDate)
+
+		const pts = loyaltyPointsByCustomerId[cid] ?? 0
+		let loyaltyDiscount = computeLoyaltyDiscount(pts)
+
+		const capped = applyMaxDiscountCap(volumeDiscount, loyaltyDiscount)
+		const totalDiscount = capped.totalDiscount
+		volumeDiscount = capped.volumeDiscount
+		loyaltyDiscount = capped.loyaltyDiscount
+
+		// --- Tax (legacy) ---
+		const taxable = sub - totalDiscount
+
+		let allTaxable = true
+		for (const item of items) {
+			const prod = productsById[item.productId]
+			// ⚠️ Ajuste ici si le champ s’appelle autrement que taxable
+			if (prod && prod.taxable === false) {
+				allTaxable = false
+				break
+			}
+		}
+
+		let tax = 0.0
+		if (allTaxable) {
+			tax = Math.round(taxable * TAX * 100) / 100
+		} else {
+			for (const item of items) {
+				const prod = productsById[item.productId]
+				if (prod && prod.taxable !== false) {
+					// Legacy bug: base sur qty * (prod.price || item.unitPrice), ignore promos/morning bonus
+					const itemTotal = item.qty * (prod.price ?? item.unitPrice)
+					tax += itemTotal * TAX
+				}
+			}
+			tax = Math.round(tax * 100) / 100
+		}
+
+		// --- Shipping (legacy) ---
+		let ship = 0.0
+
+		if (sub < SHIPPING_LIMIT) {
+			const shipZone = shippingZonesByZone[zone] ?? {
+				zone,
+				base: 5.0,
+				// ⚠️ Ajuste ici si perKg s’appelle per_kg
+				perKg: 0.5,
+			}
+
+			const baseShip = shipZone.base
+
+			if (weight > 10) {
+				ship = baseShip + (weight - 10) * shipZone.perKg
+			} else if (weight > 5) {
+				ship = baseShip + (weight - 5) * 0.3
+			} else {
+				ship = baseShip
+			}
+
+			if (zone === "ZONE3" || zone === "ZONE4") {
+				ship = ship * 1.2
+			}
+		} else {
+			if (weight > 20) {
+				ship = (weight - 20) * 0.25
+			}
+		}
+
+		// --- Handling (legacy) ---
+		let handling = 0.0
+		if (itemCount > 10) handling = HANDLING_FEE
+		if (itemCount > 20) handling = HANDLING_FEE * 2
+
+		// --- Currency conversion (legacy) ---
+		let currencyRate = 1.0
+		if (currency === "USD") currencyRate = 1.1
+		else if (currency === "GBP") currencyRate = 0.85
+
+		const total = Math.round((taxable + tax + ship + handling) * currencyRate * 100) / 100
+		grandTotal += total
+		totalTaxCollected += tax * currencyRate
+
+		// --- Output lines (legacy format) ---
+		outputLines.push(`Customer: ${name} (${cid})`)
+		outputLines.push(`Level: ${level} | Zone: ${zone} | Currency: ${currency}`)
+		outputLines.push(`Subtotal: ${sub.toFixed(2)}`)
+		outputLines.push(`Discount: ${totalDiscount.toFixed(2)}`)
+		outputLines.push(`  - Volume discount: ${volumeDiscount.toFixed(2)}`)
+		outputLines.push(`  - Loyalty discount: ${loyaltyDiscount.toFixed(2)}`)
+		if (totalsByCustomer[cid].morningBonus > 0) {
+			outputLines.push(`  - Morning bonus: ${totalsByCustomer[cid].morningBonus.toFixed(2)}`)
+		}
+		outputLines.push(`Tax: ${(tax * currencyRate).toFixed(2)}`)
+		outputLines.push(`Shipping (${zone}, ${weight.toFixed(1)}kg): ${ship.toFixed(2)}`)
+		if (handling > 0) {
+			outputLines.push(`Handling (${itemCount} items): ${handling.toFixed(2)}`)
+		}
+		outputLines.push(`Total: ${total.toFixed(2)} ${currency}`)
+		outputLines.push(`Loyalty Points: ${Math.floor(pts)}`)
+		outputLines.push("")
+	}
+
+	outputLines.push(`Grand Total: ${grandTotal.toFixed(2)} EUR`)
+	outputLines.push(`Total Tax Collected: ${totalTaxCollected.toFixed(2)} EUR`)
+
+	return outputLines.join("\n")
 }

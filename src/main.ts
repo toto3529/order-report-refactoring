@@ -1,7 +1,8 @@
 import { run } from "./run"
 
 function main() {
-	run()
+	const report = run()
+	console.log(report)
 }
 
 main()
