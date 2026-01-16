@@ -1,7 +1,5 @@
+import { LOYALTY_RATIO, MAX_DISCOUNT } from "../constants/business"
 import type { Order } from "../models/Orders"
-
-export const LOYALTY_RATIO = 0.01
-export const MAX_DISCOUNT = 200
 
 export function computeLoyaltyPointsByCustomer(orders: Order[]): Record<string, number> {
 	const loyaltyPoints: Record<string, number> = {}
