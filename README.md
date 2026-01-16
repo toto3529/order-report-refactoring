@@ -126,8 +126,11 @@ tests/
 CE QUI N’A PAS ENCORE ÉTÉ FAIT
 
 - Séparation du formatage du rapport (actuellement dans `run.ts`)
-- Extraction dédiée des calculs de taxes / frais de port / frais de gestion
+- Extraction dédiée des calculs (taxes / frais de port / frais de gestion)
+  dans des fonctions/modules séparés (actuellement inline dans run.ts)
 - Ajout de tests unitaires sur les fonctions pures (en complément du Golden Master)
+- Poursuite du découpage de la fonction `run` (séparation calculs / formatage),
+  volontairement limitée afin de sécuriser le Golden Master dans le temps imparti
 
 COMPROMIS ASSUMÉS
 
@@ -141,6 +144,14 @@ PISTES D’AMÉLIORATION FUTURES
 - Améliorer la gestion des erreurs et des validations
 - Augmenter la couverture de tests unitaires
 - Clarifier et documenter les règles métier implicites du legacy
+
+REMARQUES SUR LE LEGACY
+
+Plusieurs comportements non intuitifs ou potentiellement erronés ont été identifiés
+dans le code legacy (écrasement de remises, calculs de taxes incohérents selon les cas,
+logiques métier implicites).  
+Ces comportements ont été volontairement conservés afin de garantir une non-régression
+fonctionnelle stricte, conformément aux consignes du test.
 
 ---
 
