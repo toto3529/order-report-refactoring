@@ -58,6 +58,61 @@ export function run(): string {
 
 	const ordersByCustomerId = groupOrdersByCustomerId(orders)
 
-	// Étape 2 : on prépare les index/groupements, mais on ne génère pas encore le report.
+	type CustomerTotals = {
+		subtotal: number
+		weight: number
+		items: typeof orders
+		morningBonus: number
+	}
+
+	const totalsByCustomer: Record<string, CustomerTotals> = {}
+
+	for (const o of orders) {
+		const cid = o.customerId
+
+		const prod = productsById[o.productId]
+		const basePrice = prod ? prod.price : o.unitPrice
+
+		// Promo (legacy)
+		let discountRate = 0
+		let fixedDiscount = 0
+
+		if (o.promoCode) {
+			const promo = promotionsByCode[o.promoCode]
+			if (promo && promo.active) {
+				const promoValue = Number(promo.value)
+				if (promo.type === "PERCENTAGE") {
+					discountRate = promoValue / 100
+				} else if (promo.type === "FIXED") {
+					fixedDiscount = promoValue
+				}
+			}
+		}
+
+		let lineTotal = o.qty * basePrice * (1 - discountRate) - fixedDiscount * o.qty
+
+		// Morning bonus (legacy)
+		const hour = parseInt(o.time.split(":")[0])
+		let morningBonus = 0
+		if (hour < 10) {
+			morningBonus = lineTotal * 0.03
+		}
+		lineTotal = lineTotal - morningBonus
+
+		if (!totalsByCustomer[cid]) {
+			totalsByCustomer[cid] = {
+				subtotal: 0,
+				weight: 0,
+				items: [],
+				morningBonus: 0,
+			}
+		}
+
+		totalsByCustomer[cid].subtotal += lineTotal
+		totalsByCustomer[cid].weight += ((prod?.weight ?? 1.0) as number) * o.qty
+		totalsByCustomer[cid].items.push(o)
+		totalsByCustomer[cid].morningBonus += morningBonus
+	}
+
 	return ""
 }
