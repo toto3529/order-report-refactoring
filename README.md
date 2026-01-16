@@ -91,7 +91,9 @@ PROBLÈMES IDENTIFIÉS DANS LE LEGACY
   - Promotion
   - Order
 - Mise en place de fonctions de mapping explicites CSV → modèles
-- Refactoring réalisé bloc par bloc avec validation par les tests
+- Extraction des règles de remises dans `src/calculations/discounts.ts`
+- Isolation de l’I/O : `run()` retourne le report, `main.ts` gère l’affichage en console
+- Refactoring réalisé bloc par bloc avec validation systématique par les tests
 
 ---
 
@@ -108,7 +110,10 @@ src/
 - csv/ (lecture et parsing CSV)
 - models/ (modèles typés des entités métier)
 - mappers/ (mapping CSV vers modèles)
-- main.ts (point d’entrée du code refactoré)
+- calculations/ (fonctions de calcul métier)
+- constants/ (constantes métier)
+- main.ts (point d’entrée, I/O)
+- run.ts (génération du report)
 
 tests/
 
@@ -120,10 +125,9 @@ tests/
 
 CE QUI N’A PAS ENCORE ÉTÉ FAIT
 
-- Extraction des calculs métier (remises, taxes, frais de port)
-- Séparation du formatage du rapport
-- Isolation complète des effets de bord (I/O)
-- Ajout de tests unitaires sur les fonctions pures
+- Séparation du formatage du rapport (actuellement dans `run.ts`)
+- Extraction dédiée des calculs de taxes / frais de port / frais de gestion
+- Ajout de tests unitaires sur les fonctions pures (en complément du Golden Master)
 
 COMPROMIS ASSUMÉS
 
