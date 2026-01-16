@@ -6,6 +6,30 @@ import { mapShippingZones } from "./mappers/mapShippingZones"
 import { mapPromotions } from "./mappers/mapPromotions"
 import { mapOrders } from "./mappers/mapOrders"
 
+function indexByKey<T, K extends keyof T>(items: T[], key: K): Record<string, T> {
+	const index: Record<string, T> = {}
+
+	for (const item of items) {
+		const k = item[key]
+		if (typeof k !== "string") {
+			throw new Error(`indexByKey expects a string key, got ${typeof k}`)
+		}
+		index[k] = item
+	}
+
+	return index
+}
+
+function groupOrdersByCustomerId(orders: { customerId: string }[]): Record<string, typeof orders> {
+	const grouped: Record<string, typeof orders> = {}
+	for (const o of orders) {
+		const cid = o.customerId
+		if (!grouped[cid]) grouped[cid] = []
+		grouped[cid].push(o)
+	}
+	return grouped
+}
+
 export function run(): string {
 	const base = path.join(__dirname, "..", "legacy")
 
@@ -27,6 +51,13 @@ export function run(): string {
 	if (promotions.length === 0) throw new Error("No promotions parsed")
 	if (orders.length === 0) throw new Error("No orders parsed")
 
-	// Étape 1 : on ne calcule pas encore le report, on retourne une string vide.
+	const customersById = indexByKey(customers, "id")
+	const productsById = indexByKey(products, "id")
+	const shippingZonesByZone = indexByKey(shippingZones, "zone")
+	const promotionsByCode = indexByKey(promotions, "code")
+
+	const ordersByCustomerId = groupOrdersByCustomerId(orders)
+
+	// Étape 2 : on prépare les index/groupements, mais on ne génère pas encore le report.
 	return ""
 }
