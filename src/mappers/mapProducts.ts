@@ -20,12 +20,12 @@ export function mapProducts(rows: string[][]): Product[] {
 		}
 
 		return {
-			id: id.trim(),
-			name: name.trim(),
-			category: category.trim(),
+			id: id,
+			name: name,
+			category: category,
 			price: toNumber(priceRaw, "price", index),
 			weight: toNumber(weightRaw ?? "", "weight", index, 1.0),
-			taxable: (taxableRaw ?? "").trim() === "true",
+			taxable: (taxableRaw ?? "") === "true",
 		}
 	})
 }

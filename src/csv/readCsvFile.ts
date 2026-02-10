@@ -9,11 +9,13 @@ export function readCsvFile(filePath: string, options: ReadCsvOptions = { hasHea
 
 	const rows = raw
 		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0)
-		.map((line) => line.split(",").map((cell) => cell.trim()))
+		// Legacy: on garde la ligne brute (pas de trim global),
+		// mais on filtre les lignes "vides" via trim()
+		.filter((line) => line.trim().length > 0)
+		// Legacy: split simple, sans trim des cellules (garde le \r éventuel)
+		.map((line) => line.split(","))
 
-	// Suppression propre de la ligne d’en-tête à chaque fichier csv
+	// Legacy: suppression de l'en-tête
 	if (options.hasHeader) {
 		return rows.slice(1)
 	}

@@ -1,7 +1,3 @@
-
-> order-report-legacy@1.0.0 legacy
-> ts-node legacy/orderReportLegacy.ts
-
 Customer: Alice Martin (C001)
 Level: BASIC | Zone: ZONE1 | Currency: EUR
 Subtotal: 174.92

@@ -18,11 +18,11 @@ export function mapCustomers(rows: string[][]): Customer[] {
 		}
 
 		return {
-			id: id.trim(),
-			name: name.trim(),
+			id: id,
+			name: name,
 			level,
-			zone: zone.trim(),
-			currency: currency.trim(),
+			zone: zone,
+			currency: currency,
 		}
 	})
 }

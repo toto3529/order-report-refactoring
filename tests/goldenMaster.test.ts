@@ -5,7 +5,7 @@ import path from "path"
 describe("Golden Master", () => {
 	it("should match legacy output with reference (strict)", () => {
 		// 1) Exécuter le legacy et capturer la sortie
-		const output = execSync("npm run legacy", { encoding: "utf8" }).replace(/\r\n/g, "\n")
+		const output = execSync("npm run -s legacy", { encoding: "utf8" }).replace(/\r\n/g, "\n")
 
 		// 2) Chemins de référence
 		const expectedDir = path.join("legacy", "expected")
@@ -25,7 +25,7 @@ describe("Golden Master", () => {
 		const expected = readFileSync(expectedFile, "utf8").replace(/\r\n/g, "\n")
 
 		// 6) Exécuter le refactor et capturer la sortie
-		const refactorOutput = execSync("npm run refactor", { encoding: "utf8" }).replace(/\r\n/g, "\n")
+		const refactorOutput = execSync("npm run -s refactor", { encoding: "utf8" }).replace(/\r\n/g, "\n")
 
 		// 7) Comparaison STRICTE : refactor vs référence legacy
 		expect(refactorOutput).toBe(expected)
