@@ -24,7 +24,10 @@ describe("Golden Master", () => {
 		// 5) Lire le fichier de référence
 		const expected = readFileSync(expectedFile, "utf8").replace(/\r\n/g, "\n")
 
-		// 6) Comparaison STRICTE : Golden Master
-		expect(output).toBe(expected)
+		// 6) Exécuter le refactor et capturer la sortie
+		const refactorOutput = execSync("npm run refactor", { encoding: "utf8" }).replace(/\r\n/g, "\n")
+
+		// 7) Comparaison STRICTE : refactor vs référence legacy
+		expect(refactorOutput).toBe(expected)
 	})
 })
